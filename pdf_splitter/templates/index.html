@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Splitter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>PDF Splitter</h1>
+            <p class="subtitle">轻松分割您的 PDF 文件</p>
+            <form id="split-form">
+                <div class="form-group">
+                    <label for="file">选择 PDF 文件</label>
+                    <input type="file" name="file" id="file" accept=".pdf" required>
+                </div>
+                <div class="form-group">
+                    <label for="num_parts">分割成几部分</label>
+                    <input type="number" name="num_parts" id="num_parts" min="1" required>
+                </div>
+                <div id="custom-pages" class="form-group hidden">
+                    <label for="part1_pages">第一部分页数</label>
+                    <input type="number" name="part1_pages" id="part1_pages" min="1">
+                    <label for="part2_pages">第二部分页数</label>
+                    <input type="number" name="part2_pages" id="part2_pages" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="output_dir">输出目录</label>
+                    <input type="text" name="output_dir" id="output_dir" required>
+                </div>
+                <button type="submit">开始分割</button>
+            </form>
+            <div id="progress-container" class="hidden">
+                <div class="progress-bar">
+                    <div id="progress" class="progress"></div>
+                </div>
+                <p id="progress-text">0%</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('num_parts').addEventListener('input', function () {
+            const numParts = parseInt(this.value);
+            const customPages = document.getElementById('custom-pages');
+            if (numParts === 2) {
+                customPages.classList.remove('hidden');
+            } else {
+                customPages.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('split-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // 显示进度条
+            document.getElementById('progress-container').classList.remove('hidden');
+
+            // 创建 FormData 对象
+            const formData = new FormData(this);
+
+            // 发送分割请求
+            fetch('/split', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+              .then(data => {
+                if (data.status === 'success') {
+                    // 开始轮询进度
+                    const interval = setInterval(() => {
+                        fetch('/progress')
+                            .then(response => response.json())
+                            .then(data => {
+                                const progress = data.progress;
+                                document.getElementById('progress').style.width = `${progress}%`;
+                                document.getElementById('progress-text').textContent = `${progress}%`;
+
+                                // 分割完成
+                                if (progress === 100) {
+                                    clearInterval(interval);
+                                    alert('分割完成！');
+                                }
+                            });
+                    }, 1000);  // 每秒轮询一次
+                }
+            });
+        });
+    </script>
+</body>
+</html>
